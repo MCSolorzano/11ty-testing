@@ -1,4 +1,4 @@
-name: Delete Branch on Merge
+name: Conditional Branch Deletion
 
 on:
   pull_request:
@@ -9,16 +9,28 @@ jobs:
     # if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: read 
+      contents: write  # Allows write access to repository contents
+      pull-requests: read  # Allows read access to pull requests
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Check if branch exists
+        id: check_branch
+        run: |
+          BRANCH_NAME=${{ github.event.pull_request.head.ref }}
+          if git ls-remote --exit-code --heads origin $BRANCH_NAME; then
+            echo "Branch '$BRANCH_NAME' exists."
+            echo "branch_exists=true" >> $GITHUB_ENV
+          else
+            echo "Branch '$BRANCH_NAME' does not exist."
+            echo "branch_exists=false" >> $GITHUB_ENV
+          fi
+
       - name: Delete branch
+        if: env.branch_exists == 'true'
         run: |
           BRANCH_NAME=${{ github.event.pull_request.head.ref }}
           echo "Deleting branch: $BRANCH_NAME"
           git push origin --delete $BRANCH_NAME
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
